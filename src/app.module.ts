@@ -7,7 +7,11 @@ import {UsersModule} from './users/users.module';
 import {TypeOrmModule} from "@nestjs/typeorm";
 import {DataSource} from "typeorm";
 import {Product} from "./products/entities/product.entity";
-import {User} from "./users/entities/user.entity";
+import {User} from "./users/user.entity";
+import {RolesGuard} from "./auth/guards/roles.guard";
+import {APP_GUARD} from "@nestjs/core";
+import { RolesModule } from './roles/roles.module';
+import {Role} from "./roles/role.entity";
 
 @Module({
     imports: [
@@ -18,13 +22,19 @@ import {User} from "./users/entities/user.entity";
             username: 'postgres',
             password: 'password',
             database: 'nodenestportaldb',
-            entities: [User, Product],
+            entities: [User, Role, Product],
             synchronize: true,
         }),
-      AuthModule, ProductsModule, UsersModule],
+        AuthModule, ProductsModule, UsersModule, RolesModule],
     controllers: [AppController],
-    providers: [AppService],
+    providers: [
+        {
+            provide: APP_GUARD,
+            useClass: RolesGuard,
+        },
+        AppService],
 })
 export class AppModule {
-  constructor(private dataSource: DataSource) {}
+    constructor(private dataSource: DataSource) {
+    }
 }

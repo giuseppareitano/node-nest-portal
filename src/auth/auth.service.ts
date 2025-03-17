@@ -1,8 +1,9 @@
-import {ConflictException, Injectable, UnauthorizedException} from '@nestjs/common';
+import {HttpException, HttpStatus, Injectable, UnauthorizedException} from '@nestjs/common';
 import {UsersService} from "../users/users.service";
 import {JwtService} from "@nestjs/jwt";
 import {CreateUserDto} from "../users/dto/create-user.dto";
 import {UserDto} from "../users/dto/user.dto";
+import {RoleEnum} from "./enums/role.enum";
 
 const bcrypt = require('bcrypt');
 
@@ -24,7 +25,7 @@ export class AuthService {
         }
 
         // Generiamo il payload per il JWT
-        const payload = {username: user.username, id: user.id};
+        const payload: Partial<UserDto> = {username: user.username, id: user.id, roles: user.roles.map(r => r.name as RoleEnum)};
 
         // Restituiamo il token JWT
         return {
@@ -34,16 +35,25 @@ export class AuthService {
 
     async signUp(createUserDto: CreateUserDto): Promise<UserDto> {
         const existingUser = await this.usersService.findOneByUsername(createUserDto.username);
-        if (existingUser) {
-            throw new ConflictException('Username already exists');
+
+        if(!!existingUser){
+            throw new HttpException("Username already exists", HttpStatus.INTERNAL_SERVER_ERROR)
         }
+
         // Hash della password
         const salt = await bcrypt.genSalt(10);
+
         // Creazione dell'utente nel DB
         createUserDto.hashedPassword = await bcrypt.hash(createUserDto.password, salt);
 
-        const user = await this.usersService.create(createUserDto);
-        return new UserDto(user.id, user.username, user.firstName, user.lastName)
+        const newUser = await this.usersService.create(createUserDto)
+        return new UserDto(
+            newUser.id,
+            newUser.username,
+            newUser.firstName,
+            newUser.lastName,
+            newUser.roles.map(r => r.name as RoleEnum)
+        );
     }
 
 }
